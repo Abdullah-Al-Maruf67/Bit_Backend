@@ -1,0 +1,22 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Database
+db.sqlite3
+
+# Logs
+*.log
+
+# Static files (Django)
+staticfiles/
+
+# System files
+.DS_Store
+BitBackend.zip
