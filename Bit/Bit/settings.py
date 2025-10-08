@@ -149,7 +149,6 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '<your-google-client-secret>'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://Bit_Backend.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
