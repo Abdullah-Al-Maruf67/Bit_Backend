@@ -404,15 +404,13 @@ class CommitViewSet(viewsets.ModelViewSet):
             'blobs': blobs_data
         })
         
-        # Associate with repository and update contents
+        # Associate with repository
         repository.commits.add(commit)
-        repository.update_contents()
         
         # Prepare response
         response_data = CommitSerializer(commit).data
         response_data.update({
             'id': commit.id,
-            'contents': Blob.get_folder_structure(repository.id),
             'operations_summary': {
                 'updated': [op['path'] for op in operations if op['type'] == 'UPDATE'],
                 'deleted': deleted_files,
