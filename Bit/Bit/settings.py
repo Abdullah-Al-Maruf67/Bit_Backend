@@ -148,8 +148,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '<your-google-client-id>'
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '<your-google-client-secret>'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://hoppscotch.io",
-    "http://localhost:3000",
+    "https://bit-front-end.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
