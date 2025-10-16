@@ -495,7 +495,8 @@ class CommitViewSet(viewsets.ModelViewSet):
         # Create commit using model method
         commit = Commit.create_from_data({
             **commit_data,
-            'blobs': blobs_data
+            'blobs': blobs_data,
+            'deleted_files': deleted_files
         })
         
         # Associate with repository

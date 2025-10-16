@@ -213,10 +213,16 @@ class Commit(models.Model):
         related_name='commits',
         help_text="Files included in this commit"
     )
+    deleted_files = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of file paths that were deleted in this commit"
+    )
     
     @classmethod
     def create_from_data(cls, data: dict) -> 'Commit':
         blobs_data = data.pop('blobs', [])
+        deleted_files = data.pop('deleted_files', [])
         
         # Convert timestamp to integer if it's a datetime object
         timestamp = data.get('timestamp')
@@ -229,7 +235,8 @@ class Commit(models.Model):
             'email': data.get('email'),
             'timestamp': str(timestamp),  # Convert timestamp to string for hash
             'message': data.get('message'),
-            'parent_hash': data.get('parent_hash', '')
+            'parent_hash': data.get('parent_hash', ''),
+            'deleted_files': deleted_files  # Include deleted files in hash
         }
         
         # Add a unique component to ensure unique commits
@@ -250,6 +257,7 @@ class Commit(models.Model):
             timestamp=commit_timestamp,
             message=data['message'],
             parent_hash=data.get('parent_hash'),
+            deleted_files=deleted_files,  # Store deleted files
         )
 
         # Process blobs
@@ -316,17 +324,25 @@ class Repository(models.Model):
     
     def update_contents(self):
         """
-        Update repository contents with the latest commit's blobs
+        Update repository contents by applying changes from the latest commit.
+        This properly merges changes instead of replacing all content.
         """
-        # Clear existing blobs
-        self.blobs.clear()
+        if not self.commits.exists():
+            return
+            
+        # Get the latest commit (by timestamp)
+        latest_commit = self.commits.latest('timestamp')
         
-        # Add blobs from latest commit
-        if self.commits.exists():
-            latest_commit = self.commits.latest('timestamp')
-            # Force evaluation of the queryset to ensure all blobs are added
-            blobs_to_add = list(latest_commit.blobs.all())
+        # Add/update blobs from the latest commit
+        # ManyToMany will handle duplicates automatically
+        blobs_to_add = list(latest_commit.blobs.all())
+        if blobs_to_add:
             self.blobs.add(*blobs_to_add)
+        
+        # Remove blobs that were deleted in the latest commit
+        for deleted_path in latest_commit.deleted_files:
+            # Remove blobs with matching file_path
+            self.blobs.filter(file_path=deleted_path).delete()
     
     class Meta:
         ordering = ['name']
