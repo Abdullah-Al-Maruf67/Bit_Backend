@@ -270,6 +270,100 @@ class ShareableLinkViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=False, methods=['get'], url_path='(?P<token>.+)/file')
+    def get_file_by_token(self, request, token=None):
+        """Fetch file contents for a repository accessed via share link token."""
+        print("=" * 50)
+        print("📄 INCOMING SHARE TOKEN FILE REQUEST:")
+        print(f"📝 Method: {request.method}")
+        print(f"🌐 URL: {request.path}")
+        print(f"🔑 Token: {token}")
+        print(f"🔍 Query Params: {request.query_params}")
+        print("=" * 50)
+
+        sha1 = request.query_params.get('sha1')
+        file_path = request.query_params.get('path')
+
+        if not sha1:
+            return Response(
+                {'error': 'Query parameter "sha1" is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            link = ShareableLink.objects.get(token=token)
+        except ShareableLink.DoesNotExist:
+            return Response(
+                {'error': 'Invalid share token'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not link.is_valid():
+            return Response(
+                {'error': 'Share link has expired or is invalid'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        blobs = Blob.objects.filter(
+            repositories__id=link.repository_id,
+            sha1_hash=sha1
+        )
+
+        if file_path:
+            blobs = blobs.filter(file_path=file_path)
+
+        matches = list(blobs[:2])
+        if len(matches) == 0:
+            return Response(
+                {'error': 'File not found for given sha1/path'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if len(matches) > 1 and not file_path:
+            return Response(
+                {
+                    'error': 'Multiple files share this content. Provide "path" to disambiguate.',
+                    'candidates': list(
+                        Blob.objects.filter(
+                            repositories__id=link.repository_id,
+                            sha1_hash=sha1
+                        ).values_list('file_path', flat=True)
+                    )
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        blob = matches[0]
+
+        try:
+            if blob.content:
+                raw_bytes = bytes(blob.content)
+            else:
+                raw_bytes = blob.get_original_data()
+        except Exception:
+            return Response(
+                {'error': 'Failed to read file content'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        try:
+            text = raw_bytes.decode('utf-8')
+            return Response({
+                'path': blob.file_path,
+                'sha1': blob.sha1_hash,
+                'encoding': 'utf-8',
+                'text': text
+            })
+        except UnicodeDecodeError:
+            import base64
+            b64 = base64.b64encode(raw_bytes).decode('ascii')
+            return Response({
+                'path': blob.file_path,
+                'sha1': blob.sha1_hash,
+                'encoding': 'base64',
+                'content': b64
+            })
+
 class CommitViewSet(viewsets.ModelViewSet):
     queryset = Commit.objects.all()
     serializer_class = CommitSerializer
