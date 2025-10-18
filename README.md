@@ -79,7 +79,3 @@ python manage.py test
 ## Contributing
 
 Feel free to submit issues and enhancement requests.
-
-## Contact
-
-[Your Name] - [Your Email]
