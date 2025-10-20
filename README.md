@@ -1,17 +1,19 @@
 # Bit Backend
 
-A Django-based backend application for a version control cli tool.
+A Django-based backend application for a version control system with JWT authentication.
 
 ## Prerequisites
 
 - Python 3.8+
 - Django 4.0+
+- Django REST Framework
+- djangorestframework-simplejwt
 
 ## Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/PROGRAMMING-HEROZSBD/Bit_Backend.git
+   git clone https://github.com/Abdullah-Al-Maruf67/Bit_Backend.git
    cd Bit_Backend
    ```
 
@@ -31,7 +33,12 @@ A Django-based backend application for a version control cli tool.
    python manage.py migrate
    ```
 
-5. Run the development server:
+5. Create a superuser (optional, for admin access):
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+6. Run the development server:
    ```bash
    python manage.py runserver
    ```
@@ -44,10 +51,13 @@ Bit_Backend/
 │   ├── settings.py      # Project settings
 │   ├── urls.py         # Main URL configuration
 │   └── wsgi.py         # WSGI config
-├── data/               # Main app
+├── data/               # Main app for repositories and commits
 │   ├── models.py       # Database models
-│   └── views.py        # View functions
+│   ├── views.py        # View functions
+│   └── urls.py         # API endpoints
 ├── accounts/           # User authentication app
+│   ├── views.py        # Authentication views
+│   └── urls.py         # Auth endpoints
 ├── requirements.txt    # Project dependencies
 └── manage.py           # Django management script
 ```
@@ -56,8 +66,6 @@ Bit_Backend/
 
 ### Authentication
 
-All API endpoints (except registration and login) require authentication using JWT tokens.
-
 #### Register a new user
 ```http
 POST /api/users/register/
@@ -65,7 +73,7 @@ Content-Type: application/json
 
 {
     "username": "newuser",
-    "password": "securepassword123",
+    "password": "securepassword123"
 }
 ```
 
@@ -98,6 +106,16 @@ Content-Type: application/json
 }
 ```
 
+#### Verify Token
+```http
+POST /api/users/verifyaccesstoken/
+Content-Type: application/json
+
+{
+    "token": "your_access_token_here"
+}
+```
+
 #### Logout
 ```http
 POST /api/users/logout/
@@ -124,36 +142,61 @@ Content-Type: application/json
 }
 ```
 
-### Commits
-
-#### List all commits for a repository
+#### Get repository details (GET)
 ```http
-GET /api/data/commits/?repository=<repository_id>
+GET /api/data/repositories/{id}/
 Authorization: Bearer your_access_token_here
 ```
 
-#### Create a new commit
+### Commits
+
+#### List all commits (GET)
+```http
+GET /api/data/commits/
+Authorization: Bearer your_access_token_here
+```
+
+#### Create a new commit (POST)
 ```http
 POST /api/data/commits/
 Authorization: Bearer your_access_token_here
 Content-Type: application/json
 
 {
-    "repository": 1,
-    "message": "Initial commit",
-    "files_changed": "main.py, README.md"
+    "share_token": "your_share_token_here",
+    "author": "Author Name",
+    "email": "author@example.com",
+    "message": "Commit message",
+    "parent_hash": "previous_commit_hash",
+    "operations": [
+        {
+            "type": "UPDATE",
+            "path": "path/to/file.txt",
+            "content": "compressed_file_content"
+        },
+        {
+            "type": "DELETE",
+            "path": "path/to/delete.txt"
+        }
+    ]
 }
+```
+
+#### Get commit by hash (GET)
+```http
+GET /api/data/commits/by_hash/?hash={commit_hash}
+Authorization: Bearer your_access_token_here
 ```
 
 #### Merge a commit
 ```http
-POST /api/data/repositories/<repository_id>/commits/<commit_id>/merge/
+POST /api/data/repositories/{repository_id}/commits/{commit_id}/merge/
 Authorization: Bearer your_access_token_here
 ```
 
 ### Share Links
 
-#### Create a shareable link
+#### Create a shareable link (POST)
 ```http
 POST /api/data/share-links/
 Authorization: Bearer your_access_token_here
@@ -165,10 +208,14 @@ Content-Type: application/json
 }
 ```
 
-#### List all share links for a repository
+#### Get repository via share link (GET)
 ```http
-GET /api/data/share-links/?repository=<repository_id>
-Authorization: Bearer your_access_token_here
+GET /api/data/share-links/{token}/repository/
+```
+
+#### Get file via share link (GET)
+```http
+GET /api/data/share-links/{token}/file/?path=path/to/file.txt
 ```
 
 ## Environment Variables
@@ -180,11 +227,14 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 ```
 
-## Running Tests
+## Authentication Flow
 
-```bash
-python manage.py test
-```
+1. Register a new user at `/api/users/register/`
+2. Login at `/api/users/login/` to get access and refresh tokens
+3. Include the access token in the `Authorization` header for protected endpoints: `Bearer <access_token>`
+4. When the access token expires, use the refresh token at `/api/users/token/refresh/` to get a new access token
+5. Use `/api/users/verifyaccesstoken/` to verify if an access token is still valid
+6. Logout using `/api/users/logout/` to invalidate the current session
 
 ## Contributing
 
